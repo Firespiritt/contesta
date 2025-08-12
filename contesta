@@ -1,0 +1,72 @@
+
+// Simple prototype JS
+const form = document.getElementById('autoForm');
+const result = document.getElementById('result');
+const r_auto = document.getElementById('r_auto');
+const r_date = document.getElementById('r_date');
+const draft = document.getElementById('draft');
+const downloadBtn = document.getElementById('downloadPdf');
+const sendEmailBtn = document.getElementById('sendEmail');
+
+const templates = {
+  generic: (data) => {
+    const {auto, date} = data;
+    return `Exmo.(s) Senhor(es)\n\nAssunto: Recurso de contra-ordenação — Auto n.º ${auto}\n\nEu, o abaixo-assinado, venho, respeitosamente, apresentar recurso da presente contra-ordenação pelos factos e fundamentos que passo a expor:\n\n[Descrever os factos e fundamentos jurídicos]\n\nPelo exposto, requer-se a anulação da coima e demais efeitos legais.\n\nCom os melhores cumprimentos,\n\nNome: __________________\nNIF: __________________\nData: ${date || '____/__/__'}`; 
+  },
+  estacionamento: (data) => {
+    const {auto, date} = data;
+    return `Exmo.(s) Senhor(es)\n\nAssunto: Recurso de contra-ordenação por estacionamento — Auto n.º ${auto}\n\nAo abrigo do disposto no Código da Estrada e demais normas aplicáveis, venho apresentar recurso da notificação em epígrafe, pelas razões seguintes:\n\n[Razões — ex.: sinalização confusa / pagamento efetuado / erro de identificação]\n\nPelo exposto, requer-se a anulação da coima.\n\nCom os melhores cumprimentos,\nNome: __________________\nNIF: __________________\nData: ${date || '____/__/__'}`;
+  },
+  velocidade: (data) => {
+    const {auto, date} = data;
+    return `Exmo.(s) Senhor(es)\n\nAssunto: Recurso de contra-ordenação por excesso de velocidade — Auto n.º ${auto}\n\nVenho, por este meio, contestar a notificação supra identificada, solicitando a averiguação dos meios de prova, do cálculo da velocidade e eventual erro de matricula/identificação.\n\n[Fundamentos — ex.: erro de equipamento, distração da leitura, etc.]\n\nCom os melhores cumprimentos,\nNome: __________________\nNIF: __________________\nData: ${date || '____/__/__'}`;
+  }
+};
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+  const auto = document.getElementById('autoNumber').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const date = document.getElementById('date').value;
+  if(!auto || !email){ alert('Preenche o número do auto e o email.'); return; }
+  // For prototype, we don't call any API. We choose template by simple heuristic.
+  let chosen = 'generic';
+  if(auto.toLowerCase().includes('est') || auto.length < 8){ chosen = 'estacionamento'; }
+  // very naive: if number contains 'vel' choose velocidade (demo)
+  if(auto.toLowerCase().includes('vel')) chosen = 'velocidade';
+  const data = {auto, date};
+  r_auto.textContent = auto;
+  r_date.textContent = date || 'não indicada';
+  draft.value = templates[chosen](data);
+  result.classList.remove('hidden');
+
+  // store meta in localStorage as "simulated backend"
+  const cases = JSON.parse(localStorage.getItem('contesta_cases') || '[]');
+  cases.push({auto, email, date, state:'gerado', ts: new Date().toISOString()});
+  localStorage.setItem('contesta_cases', JSON.stringify(cases));
+});
+
+downloadBtn.addEventListener('click', function(){
+  // generate a printable page and open print dialog
+  const title = 'Contestação - Auto ' + r_auto.textContent;
+  const content = `<html><head><title>${title}</title><style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:40px}
+    h1{font-size:18px}
+    pre{white-space:pre-wrap;font-size:14px}
+    .meta{color:#666;font-size:13px;margin-bottom:20px}
+  </style></head><body><h1>Contesta Já — Contestação</h1>
+  <div class="meta">Auto n.º ${r_auto.textContent} — Data: ${r_date.textContent}</div>
+  <pre>${draft.value}</pre>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(content);
+  w.document.close();
+  w.focus();
+  // chrome will show print dialog if desired:
+  setTimeout(()=> w.print(), 500);
+});
+
+sendEmailBtn.addEventListener('click', function(){
+  // Simulate sending email
+  alert('Email enviado (simulado). Em produção integrar SMTP/SendGrid e endpoint backend.');
+});
